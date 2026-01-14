@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cochl 보안 에이전트 - 데모</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .upload-zone:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-zone.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-zone h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .upload-zone p {
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .status.processing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .results {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9ff;
+            border-radius: 6px;
+        }
+
+        .result-item.emergency {
+            border-left-color: #dc3545;
+            background: #ffe6e6;
+        }
+
+        .result-item h4 {
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .severity-low {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .severity-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .severity-high {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .info-item {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .info-item strong {
+            color: #333;
+        }
+
+        .summary {
+            background: #e8ebff;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .summary h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-item .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .summary-item .label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .file-info {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .file-info h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔊 Cochl 보안 에이전트</h1>
+            <p>오디오/비디오 파일에서 보안 위협 탐지</p>
+        </div>
+
+        <div class="card">
+            <div class="upload-zone" id="uploadZone">
+                <h3>📁 파일 업로드</h3>
+                <p>오디오 또는 비디오 파일을 드래그하거나 클릭하여 선택하세요</p>
+                <p style="font-size: 0.9em; margin-top: 10px;">지원 형식: MP3, WAV, OGG, MP4, WebM (최대 50MB)</p>
+                <input type="file" id="fileInput" accept=".mp3,.wav,.ogg,.m4a,.mp4,.webm,.avi">
+            </div>
+
+            <div id="statusArea"></div>
+
+            <div id="fileInfoArea"></div>
+
+            <div id="resultsArea"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const statusArea = document.getElementById('statusArea');
+        const resultsArea = document.getElementById('resultsArea');
+        const fileInfoArea = document.getElementById('fileInfoArea');
+
+        // 드래그 앤 드롭 이벤트
+        uploadZone.addEventListener('click', () => fileInput.click());
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        async function handleFileUpload(file) {
+            console.log('파일 업로드 시작:', file.name);
+
+            // 파일 크기 검증
+            if (file.size > 50 * 1024 * 1024) {
+                showStatus('error', '파일 크기가 50MB를 초과합니다.');
+                return;
+            }
+
+            // 파일 정보 표시
+            showFileInfo(file);
+
+            // 업로드 시작
+            showStatus('processing', '파일 업로드 중...');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                // 파일 업로드
+                const response = await fetch(`${API_BASE_URL}/api/v1/analyze`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || '업로드 실패');
+                }
+
+                const data = await response.json();
+                console.log('업로드 응답:', data);
+
+                // 결과 폴링 시작
+                pollResults(data.task_id);
+
+            } catch (error) {
+                console.error('업로드 에러:', error);
+                showStatus('error', `업로드 실패: ${error.message}`);
+            }
+        }
+
+        function showFileInfo(file) {
+            fileInfoArea.innerHTML = `
+                <div class="file-info">
+                    <h4>📄 파일 정보</h4>
+                    <p><strong>파일명:</strong> ${file.name}</p>
+                    <p><strong>크기:</strong> ${formatFileSize(file.size)}</p>
+                    <p><strong>형식:</strong> ${file.type || '알 수 없음'}</p>
+                </div>
+            `;
+        }
+
+        async function pollResults(taskId) {
+            showStatus('processing', '분석 중... <div class="spinner"></div>');
+
+            const maxAttempts = 30;
+            let attempts = 0;
+
+            const interval = setInterval(async () => {
+                attempts++;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/v1/analyze/${taskId}`);
+                    const data = await response.json();
+
+                    console.log('상태 조회:', data);
+
+                    if (data.status === 'completed') {
+                        clearInterval(interval);
+                        showStatus('completed', '✅ 분석 완료!');
+                        displayResults(data);
+                    } else if (data.status === 'failed') {
+                        clearInterval(interval);
+                        showStatus('error', `❌ 분석 실패: ${data.error}`);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        showStatus('error', '⏱️ 분석 시간 초과');
+                    }
+                } catch (error) {
+                    console.error('결과 조회 에러:', error);
+                    clearInterval(interval);
+                    showStatus('error', `결과 조회 실패: ${error.message}`);
+                }
+            }, 2000); // 2초마다 폴링
+        }
+
+        function showStatus(type, message) {
+            statusArea.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function displayResults(data) {
+            if (!data.results || data.results.length === 0) {
+                resultsArea.innerHTML = `
+                    <div class="results">
+                        <h3>🔍 탐지 결과</h3>
+                        <p style="text-align: center; color: #666; padding: 20px;">
+                            탐지된 보안 이벤트가 없습니다.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="results">';
+
+            // 요약 정보
+            html += `
+                <div class="summary">
+                    <h3>📊 요약</h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="number">${data.summary.total_detections}</div>
+                            <div class="label">총 탐지 수</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="number">${data.summary.highest_severity}</div>
+                            <div class="label">최고 심각도</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="number">${data.summary.emergency_count}</div>
+                            <div class="label">긴급 이벤트</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 개별 탐지 결과
+            html += '<h3>🚨 탐지된 이벤트</h3>';
+
+            data.results.forEach((result, index) => {
+                const severityClass = getSeverityClass(result.severity_score);
+                const emergencyClass = result.is_emergency ? 'emergency' : '';
+
+                html += `
+                    <div class="result-item ${emergencyClass}">
+                        <h4>
+                            ${index + 1}. ${result.tag}
+                            <span class="severity-badge ${severityClass}">
+                                심각도: ${result.severity_score}/10
+                            </span>
+                            ${result.is_emergency ? '<span style="color: red;">⚠️ 긴급</span>' : ''}
+                        </h4>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <strong>신뢰도:</strong> ${(result.confidence * 100).toFixed(1)}%
+                            </div>
+                            <div class="info-item">
+                                <strong>시작 시간:</strong> ${result.start_time.toFixed(2)}초
+                            </div>
+                            <div class="info-item">
+                                <strong>종료 시간:</strong> ${result.end_time.toFixed(2)}초
+                            </div>
+                            <div class="info-item">
+                                <strong>지속 시간:</strong> ${(result.end_time - result.start_time).toFixed(2)}초
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px;">
+                            <pre style="white-space: pre-wrap; margin: 0; font-size: 0.9em;">${result.message}</pre>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            resultsArea.innerHTML = html;
+        }
+
+        function getSeverityClass(score) {
+            if (score >= 8) return 'severity-high';
+            if (score >= 5) return 'severity-medium';
+            return 'severity-low';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+    </script>
+</body>
+</html>

@@ -15,3 +15,12 @@ pydantic==2.5.3
 
 # 날짜/시간 처리를 위한 라이브러리
 python-dateutil==2.8.2
+
+# 파일 업로드 지원을 위한 라이브러리
+python-multipart==0.0.6
+
+# 비동기 HTTP 클라이언트 (Cochl API 호출용)
+httpx==0.26.0
+
+# 비동기 파일 처리
+aiofiles==23.2.1
