@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from backend.models.sound_event import SoundEvent
 from backend.services.manager_agent import ManagerAgent
+from backend.services.llm_analyzer import LLMAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,12 @@ class DetectionResultModel(BaseModel):
     message: str
 
 
-def setup_file_upload_router(cochl_client, manager_agent: ManagerAgent, emergency_threshold: int):
+def setup_file_upload_router(
+    cochl_client,
+    manager_agent: ManagerAgent,
+    emergency_threshold: int,
+    llm_analyzer: LLMAnalyzer = None
+):
     """파일 업로드 라우터 설정"""
 
     @router.post("/analyze", response_model=AnalyzeResponse)
@@ -125,12 +131,29 @@ def setup_file_upload_router(cochl_client, manager_agent: ManagerAgent, emergenc
                         "end_time": cochl_result.end_time,
                         "severity_score": severity_score,
                         "message": alert_message,
-                        "is_emergency": severity_score >= emergency_threshold
+                        "is_emergency": severity_score >= emergency_threshold,
+                        "interpretation": None  # 초기값
                     })
+
+                # LLM 분석 추가 (새로 추가)
+                if llm_analyzer and len(processed_results) > 0:
+                    logger.info(f"🤖 LLM 상황 분석 시작... ({len(processed_results)}개 이벤트)")
+                    for result in processed_results:
+                        interpretation = await llm_analyzer.analyze_event(result, processed_results)
+                        result["interpretation"] = interpretation
+                    logger.info("✅ LLM 상황 분석 완료")
+
+                # 요약 정보 계산
+                summary = {
+                    "total_detections": len(processed_results),
+                    "highest_severity": max([r["severity_score"] for r in processed_results], default=0),
+                    "emergency_count": sum(1 for r in processed_results if r["is_emergency"])
+                }
 
                 # 결과 저장
                 tasks[task_id]["status"] = "completed"
                 tasks[task_id]["results"] = processed_results
+                tasks[task_id]["summary"] = summary
 
                 logger.info(f"파일 분석 완료: task_id={task_id}, detections={len(processed_results)}")
 

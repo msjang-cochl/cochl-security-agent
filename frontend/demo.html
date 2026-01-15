@@ -247,6 +247,33 @@
             color: #667eea;
             margin-bottom: 10px;
         }
+
+        /* AI 상황 분석 섹션 스타일 */
+        .interpretation-section {
+            margin-top: 12px;
+            padding: 12px;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8f0ff 100%);
+            border-left: 4px solid #667eea;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .interpretation-section h5 {
+            color: #667eea;
+            font-size: 0.95em;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+        }
+
+        .interpretation-section p {
+            color: #2d3748;
+            font-size: 0.9em;
+            line-height: 1.6;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -467,6 +494,12 @@
                         <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px;">
                             <pre style="white-space: pre-wrap; margin: 0; font-size: 0.9em;">${result.message}</pre>
                         </div>
+                        ${result.interpretation ? `
+                            <div class="interpretation-section">
+                                <h5>🤖 AI 상황 분석</h5>
+                                <p>${result.interpretation}</p>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             });

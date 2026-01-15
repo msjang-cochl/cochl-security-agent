@@ -10,7 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.services.manager_agent import ManagerAgent
 from backend.services.zapier_integration import ZapierIntegration
-from backend.services.cochl_api import MockCochlAPIClient
+from backend.services.cochl_api import CochlAPIClient, MockCochlAPIClient
+from backend.services.llm_analyzer import LLMAnalyzer
 from backend.routers import webhook, health, file_upload
 
 # 환경 변수 로드
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 # 환경 변수에서 설정값 가져오기
 COCHL_API_KEY = os.getenv("COCHL_API_KEY", "")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ZAPIER_WEBHOOK_URL = os.getenv("ZAPIER_WEBHOOK_URL", "")
 EMERGENCY_THRESHOLD = int(os.getenv("EMERGENCY_THRESHOLD", "7"))
 SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
@@ -54,12 +56,32 @@ app.add_middleware(
 # 전역 인스턴스 생성
 manager = ManagerAgent()
 zapier = ZapierIntegration(ZAPIER_WEBHOOK_URL) if ZAPIER_WEBHOOK_URL else None
-cochl_client = MockCochlAPIClient()  # Mock 클라이언트 사용 (실제 API 키 불필요)
+
+# Cochl API 클라이언트 초기화 (실제 or Mock)
+if COCHL_API_KEY:
+    cochl_client = CochlAPIClient(
+        COCHL_API_KEY,
+        os.getenv("COCHL_API_URL", "https://api.cochl.ai/v1")
+    )
+    logger.info("✅ 실제 Cochl API 클라이언트 사용")
+else:
+    cochl_client = MockCochlAPIClient()
+    logger.warning("⚠️ Mock Cochl API 클라이언트 사용 (테스트 모드)")
+
+# LLM Analyzer 초기화
+llm_analyzer = LLMAnalyzer(ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+if not llm_analyzer:
+    logger.warning("⚠️ LLM 분석 비활성화됨 (ANTHROPIC_API_KEY 미설정)")
 
 # 라우터 설정 및 등록
 webhook_router = webhook.setup_webhook_router(manager, zapier, EMERGENCY_THRESHOLD)
 health_router = health.setup_health_router(COCHL_API_KEY, ZAPIER_WEBHOOK_URL, EMERGENCY_THRESHOLD)
-file_upload_router = file_upload.setup_file_upload_router(cochl_client, manager, EMERGENCY_THRESHOLD)
+file_upload_router = file_upload.setup_file_upload_router(
+    cochl_client,
+    manager,
+    EMERGENCY_THRESHOLD,
+    llm_analyzer  # LLM Analyzer 추가
+)
 
 app.include_router(webhook_router)
 app.include_router(health_router)
@@ -74,9 +96,14 @@ if __name__ == "__main__":
 
     # 필수 설정 확인
     if not COCHL_API_KEY:
-        logger.warning("⚠️ COCHL_API_KEY가 설정되지 않았습니다!")
+        logger.warning("⚠️ COCHL_API_KEY가 설정되지 않았습니다! (Mock 모드 사용)")
     else:
         logger.info(f"✅ Cochl API 키 확인: {COCHL_API_KEY[:10]}...")
+
+    if not ANTHROPIC_API_KEY:
+        logger.warning("⚠️ ANTHROPIC_API_KEY가 설정되지 않았습니다! LLM 분석 비활성화")
+    else:
+        logger.info(f"✅ Anthropic API 키 확인: {ANTHROPIC_API_KEY[:10]}...")
 
     if not ZAPIER_WEBHOOK_URL:
         logger.warning("⚠️ ZAPIER_WEBHOOK_URL이 설정되지 않았습니다!")

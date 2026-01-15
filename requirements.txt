@@ -24,3 +24,6 @@ httpx==0.26.0
 
 # 비동기 파일 처리
 aiofiles==23.2.1
+
+# Claude API 통합 (LLM 상황 해석용)
+anthropic==0.42.0
