@@ -52,6 +52,8 @@ Python 3.8 이상이 설치되어 있어야 합니다. 설치되어 있지 않�
 
 ## 설치 방법
 
+git clone https://github.com/msjang-cochl/cochl-security-agent.git
+
 ### 1단계: 프로젝트 폴더로 이동
 
 터미널을 열고 프로젝트 폴더로 이동합니다:
